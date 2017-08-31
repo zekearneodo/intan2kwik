@@ -103,7 +103,7 @@ def rhd_rec_to_table(rhd_list, parent_group, include_chans):
             tables.append_rows(dset, save_block.astype(np.int16))
             tables.append_rows(tset, save_t)
 
-            tables.append_rows(dset_dig, save_block.astype(np.short))
+            tables.append_rows(dset_dig, dig_in_data.astype(np.short))
             tables.append_rows(tset_dig, dig_in_t)
 
             # assert time continuity
