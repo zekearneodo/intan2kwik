@@ -3,7 +3,7 @@
 # Michael Gibson 23 April 2015
 
 import sys, struct
-from qstring import read_qstring
+from intan2kwik.core.intan.util.qstring import read_qstring
 
 
 def read_header(fid):

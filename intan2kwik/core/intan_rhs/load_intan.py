@@ -45,11 +45,11 @@ def read_data(filename, scaled_output=True):
 
         # Determine how many samples the data file contains.
         bytes_per_block = get_bytes_per_data_block(header)
-        # print('{} bytes per data block'.format(bytes_per_block))
+        logger.debug('{} bytes per data block'.format(bytes_per_block))
         # How many data blocks remain in this file?
         data_present = False
         bytes_remaining = filesize - fid.tell()
-        # print('{} bytes per remaining'.format(bytes_remaining))
+        logger.debug('{} bytes per remaining'.format(bytes_remaining))
         if bytes_remaining > 0:
             data_present = True
 
@@ -112,7 +112,6 @@ def read_data(filename, scaled_output=True):
             # Initialize indices used in looping
             indices = {}
             indices['amplifier'] = 0
-            indices['aux_input'] = 0
             indices['board_adc'] = 0
             indices['board_dac'] = 0
             indices['board_dig_in'] = 0
@@ -120,6 +119,7 @@ def read_data(filename, scaled_output=True):
 
             # print_increment = 10
             # percent_done = print_increment
+            logger.info('corrected data block 0')
             for i in tqdm(range(num_data_blocks)):
                 read_one_data_block(data, header, indices, fid)
 
@@ -132,7 +132,9 @@ def read_data(filename, scaled_output=True):
                 #     percent_done = percent_done + print_increment
 
             # Make sure we have read exactly the right amount of data.
+            logger.info('indices {}'.format(indices))
             bytes_remaining = filesize - fid.tell()
+            logger.debug('Bytes remaining {}'.format(bytes_remaining))
             if bytes_remaining != 0: raise Exception('Error: End of file not reached.')
 
     # end of reading data file.

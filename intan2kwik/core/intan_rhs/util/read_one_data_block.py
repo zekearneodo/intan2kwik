@@ -12,7 +12,8 @@ def read_one_data_block(data, header, indices, fid):
     # In version 1.2, we moved from saving timestamps as unsigned
     # integers to signed integers to accommodate negative (adjusted)
     # timestamps for pretrigger data['
-    data['t_amplifier'][indices['amplifier']:(indices['amplifier']+128)] = np.array(struct.unpack('<' + 'i' * 128, fid.read(128*4)))
+    data['t_amplifier'][indices['amplifier']:
+    (indices['amplifier']+128)] = np.array(struct.unpack('<' + 'i' * 128, fid.read(128*4)))
 
     if header['num_amplifier_channels'] > 0:
         tmp = np.fromfile(fid, dtype='uint16', count=128 * header['num_amplifier_channels'])
@@ -30,7 +31,7 @@ def read_one_data_block(data, header, indices, fid):
         data['stim_data_raw'][range(header['num_amplifier_channels']),
         indices['amplifier']:(indices['amplifier'] + 128)] = tmp.reshape(header['num_amplifier_channels'], 128)
 
-    if header['num_board_adc_channels'] >0:
+    if header['num_board_adc_channels'] > 0:
         tmp = np.fromfile(fid, dtype='uint16', count=128 * header['num_board_adc_channels'])
         data['board_adc_data'][range(header['num_board_adc_channels']),
         indices['board_adc']:(indices['board_adc'] + 128)] = tmp.reshape(header['num_board_adc_channels'], 128)
@@ -41,8 +42,8 @@ def read_one_data_block(data, header, indices, fid):
         indices['board_dac']:(indices['board_dac'] + 128)] = tmp.reshape(header['num_board_dac_channels'], 128)
 
     if header['num_board_dig_in_channels'] > 0:
-        data['board_dig_in_raw'][indices['board_dig_in']:(indices['board_dig_in']+60)] = np.array(struct.unpack('<' + 'H' *60, fid.read(120)))
+        data['board_dig_in_raw'][indices['board_dig_in']:(indices['board_dig_in'] + 128)] = np.array(struct.unpack('<' + 'H' * 128, fid.read(256)))
 
     if header['num_board_dig_out_channels'] > 0:
-        data['board_dig_out_raw'][indices['board_dig_out']:(indices['board_dig_out']+60)] = np.array(struct.unpack('<' + 'H' *60, fid.read(120)))
+        data['board_dig_out_raw'][indices['board_dig_out']:(indices['board_dig_out'] + 128)] = np.array(struct.unpack('<' + 'H' * 128, fid.read(256)))
 

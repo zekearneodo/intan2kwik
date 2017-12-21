@@ -2,6 +2,7 @@ import numpy as np
 import logging
 import glob
 import os
+import re
 
 from intan2kwik.core.intan.util.read_header import read_header as read_header_rhd
 from intan2kwik.core.intan_rhs.util.read_header import read_header as read_header_rhs
@@ -11,6 +12,7 @@ from intan2kwik.core.intan_rhs.load_intan import read_data as read_data_rhs
 
 logger = logging.getLogger('intan2kwik.core.reading')
 rh_search_string = '*.rh[d, s]'
+r_num_from_str = re.compile("([a-zA-Z\-]+)([0-9]+)")
 
 # a clunky wrapper for read_intan_header that selects the right version
 def read_intan_header(file_path):
@@ -58,25 +60,35 @@ def native_to_board(native_name, names_dict=None):
         #short name of the channel: name of the group of channels in the header dictionary
         names_dict = {'adc': 'board_adc',
                       'din': 'board_dig_in',
-                      'dac': 'board_dac'}
-    name, number = native_name.split('-')
-    return names_dict[name]
+                      'dac': 'board_dac',
+                      'analog-in': 'board_adc',
+                      'digital-in': 'board_dig_in',
+                      'analog-out': 'board_dac'}
+
+    name, number = r_num_from_str.match(native_name).groups()
+    return names_dict[name[:-1]]
 
 
 def native_to_t(native_name, names_dict=None):
     if names_dict is None:
         names_dict = {'adc': 't_board_adc',
                       'dac': 't_board_adc',
-                      'din': 't_dig'}
-    name, number = native_name.split('-')
-    return names_dict[name]
+                      'din': 't_dig',
+                      'analog-in': 't_board_adc',
+                      'digital-in': 't_dig',
+                      'analog-out': 't_board_dac'}
+    name, number = r_num_from_str.match(native_name).groups()
+    return names_dict[name[:-1]]
 
 
 def chan_lookup(native_name, intan_data):
-    board_section = native_to_board(native_name)
 
+    board_section = native_to_board(native_name)
+    logger.debug('Chan {} is in sec {}'.format(native_name, board_section))
     sec_key = board_section + '_channels'
     sec_meta = intan_data[sec_key]
+    logger.debug('Sec meta {} is {}'.format(sec_key, sec_meta))
+
     sec_ch_names = [m['native_channel_name'].lower() for m in sec_meta]
 
     ch_found = [i for i, ch_name in enumerate(sec_ch_names) if ch_name == native_name]

@@ -89,7 +89,7 @@ def rhd_rec_to_table(rhd_list, parent_group, chan_groups_wishlist):
                 if '{}_data'.format(g) in read_block.keys():
                     include_chan_groups.append(g)
                 else:
-                    logger.warn('Channel data group {} is not in the recordings')
+                    logger.warn('Channel data group {} is not in the recordings'.format(g))
         # The main data (neural chans and dac chans; from include_chans)
         block_data = np.vstack([read_block['{}_data'.format(ch_grp)] for ch_grp in include_chan_groups])
         block_t = np.vstack([read_block['t_{}'.format(ch_grp)] for ch_grp in include_chan_groups])
