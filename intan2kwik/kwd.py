@@ -82,7 +82,7 @@ def rhd_rec_to_table(rhd_list, parent_group, chan_groups_wishlist):
 
     for i, rhd_file in enumerate(rhd_list):
         read_block = reading.read_data(rhd_file)
-        if i==0:
+        if i == 0:
             # filter include groups, warn if a group wasn't in the data and remove it from the list
             include_chan_groups = []
             for g in chan_groups_wishlist:

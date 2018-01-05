@@ -22,7 +22,7 @@ def read_data(filename):
 
     Data are returned in a dictionary, for future extensibility.
     """
-    logger.info('Reading intan file {}'.format(filename))
+    logger.info('Reading rhd intan file {}'.format(filename))
     tic = time.time()
     fid = open(filename, 'rb')
     filesize = os.path.getsize(filename)

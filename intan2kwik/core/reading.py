@@ -155,6 +155,7 @@ def read_aux_all_rec(native_name_list, rec_folder, volt=True):
     for i_file, rhd_file in (enumerate(all_rhd_files)):
         logger.info('file {}/{}'.format(i_file, len(all_rhd_files)))
         block_read = read_data(rhd_file)
+        logger.debug('File read')
 
         for one_chan_dict in chan_dictionaries:
             native_name = one_chan_dict['name']
