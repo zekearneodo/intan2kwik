@@ -3,6 +3,7 @@ import numpy as np
 import glob
 import os
 import h5py
+import warnings
 
 from intan2kwik.core.h5 import tables
 from intan2kwik.core import reading
@@ -81,6 +82,7 @@ def rhd_rec_to_table(rhd_list, parent_group, chan_groups_wishlist):
     s_f = parent_group.attrs.get('sample_rate')
 
     for i, rhd_file in enumerate(rhd_list):
+        logger.info('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
         read_block = reading.read_data(rhd_file)
         if i == 0:
             # filter include groups, warn if a group wasn't in the data and remove it from the list
@@ -137,7 +139,8 @@ def rhd_rec_to_table(rhd_list, parent_group, chan_groups_wishlist):
             control_delta_samples = int(np.round(control_dt * s_f))
             # logger.info('Delta samples between rhd files is {}'.format(control_delta_samples))
             if not control_delta_samples == 1:
-                raise Exception('sample_skip', 'Skipped a beat i rhd files diff is {}s'.format(control_dt))
+                warn_msg = 'Skipped a beat i rhd files diff is {}s'.format(control_dt)
+                warnings.warn(warn_msg, RuntimeWarning)
 
         last_t = save_t[-1]
         total_samples_in += save_block.shape[0]
@@ -179,13 +182,35 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec):
     return data_grp
 
 
-def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='rhd'):
+def which_board(folder):
+    rhx_files = glob.glob(os.path.join(folder, '*.rh[d,s]'))
+    if len(rhx_files) < 1:
+        raise RuntimeError('No .rh[d, x] found in folder {}'.format(folder))
+    return os.path.split(rhx_files[0])[-1].split('.')[-1]
+
+
+def neural_ports_meta(folder):
+    """
+    :param folder: (string) folder with .rh? files
+    :return: (tuple) of dictionaries:
+        chans: {port: list of channels}
+        count: {port: channel count
+    """
+    board = which_board(folder)
+    all_rhx_files = glob.glob(os.path.join(folder, '*.{}'.format(board)))
+    all_rhx_files.sort()
+    intan_read = reading.read_data(all_rhx_files[0])
+    chans, count = used_neural_channels(intan_read)
+    return chans, count
+
+
+def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='auto'):
     """
     :param folder: (string) folder where the .rh? files are
     :param dest_file_path: (string) dest of the kw? files
     :param rec: (int)
     :param include_channels: (flat ndarray/list)
-    :param board: (str) 'rhd' or 'rhs' for rhd2000 or rhs2000
+    :param board: (str) 'rhd' or 'rhs' for rhd2000 or rhs2000, 'auto' for detecting from extension
     :return:
     """
     # make the .kwd file
@@ -196,6 +221,8 @@ def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='rh
         include_channels = ['amplifier', 'board_adc']
     logger.info('reading intan chans data across all of rec {0}'.format(folder))
 
+    if board=='auto':
+        board = which_board(folder)
     all_rhx_files = glob.glob(os.path.join(folder, '*.{}'.format(board)))
     all_rhx_files.sort()
     logger.info('Found {} .{} files to process'.format(len(all_rhx_files), board))

@@ -55,6 +55,22 @@ def s_f_lookup(sec_name, intan_data):
     return intan_data['frequency_parameters']['{}_sample_rate'.format(sec_name)]
 
 
+def used_ports(intan_data):
+    # check which neural ports contain data
+    all_ports = [c['port_number'] for c in intan_data['amplifier_channels']]
+    return np.unique(np.array(all_ports))
+
+
+def used_neural_channels(intan_data):
+    ports = used_ports(intan_data)
+    used_chans = {}
+    chans_count = {}
+    for p in ports:
+        used_chans[p] = [c['custom_order'] for c in intan_data['amplifier_channels'] if c['port_number'] == p]
+        chans_count[p] = len(used_chans[p])
+    return used_chans, chans_count
+
+
 def native_to_board(native_name, names_dict=None):
     if names_dict is None:
         #short name of the channel: name of the group of channels in the header dictionary
@@ -153,7 +169,7 @@ def read_aux_all_rec(native_name_list, rec_folder, volt=True):
     chan_dictionaries = [{'name': n, 'x': np.array([]), 't': np.array([])} for n in native_name_list]
 
     for i_file, rhd_file in (enumerate(all_rhd_files)):
-        logger.info('file {}/{}'.format(i_file, len(all_rhd_files)))
+        logger.info('Getting aux chans from file file {}/{}'.format(i_file, len(all_rhd_files)))
         block_read = read_data(rhd_file)
         logger.debug('File read')
 
