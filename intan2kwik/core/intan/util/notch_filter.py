@@ -4,7 +4,10 @@
 
 import math
 import numpy as np
+import numba
+from numba import jit
 
+@jit(nopython=True, cache=True)
 def notch_filter(input, fSample, fNotch, Bandwidth):
     """Implements a notch filter (e.g., for 50 or 60 Hz) on vector 'input'.
 

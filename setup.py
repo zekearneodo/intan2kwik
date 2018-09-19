@@ -12,5 +12,5 @@ setup(name='intan2kwik',
       author_email='earneodo@ucsd.edu',
       license='GNU3',
       packages=['intan2kwik'],
-      install_requires=[],
+      install_requires=['numpy', 'h5py', 'tqdm', 'numba'],
       zip_safe=False)

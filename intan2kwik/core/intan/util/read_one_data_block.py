@@ -5,6 +5,8 @@
 import sys, struct
 import numpy as np
 
+from numba import jit
+
 def read_one_data_block(data, header, indices, fid):
     """Reads one 60-sample data block from fid into data, at the location indicated by indices."""
 

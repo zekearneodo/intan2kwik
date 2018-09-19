@@ -1,4 +1,6 @@
+README.md
 intan2kwik/__init__.py
+intan2kwik/kwd.py
 intan2kwik.egg-info/PKG-INFO
 intan2kwik.egg-info/SOURCES.txt
 intan2kwik.egg-info/dependency_links.txt
