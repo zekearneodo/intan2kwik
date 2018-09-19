@@ -67,9 +67,9 @@ def read_data(filename, scaled_output=False):
         record_time = num_amplifier_samples / header['sample_rate']
 
         if data_present:
-            logger.info('File contains {:0.3f} seconds of data.  Amplifiers were sampled at {:0.2f} kS/s.'.format(record_time, header['sample_rate'] / 1000))
+            logger.debug('File contains {:0.3f} seconds of data.  Amplifiers were sampled at {:0.2f} kS/s.'.format(record_time, header['sample_rate'] / 1000))
         else:
-            logger.info('Header file contains no data.  Amplifiers were sampled at {:0.2f} kS/s.'.format(header['sample_rate'] / 1000))
+            logger.debug('Header file contains no data.  Amplifiers were sampled at {:0.2f} kS/s.'.format(header['sample_rate'] / 1000))
 
         if data_present:
             # Pre-allocate memory for data.
@@ -119,7 +119,7 @@ def read_data(filename, scaled_output=False):
 
             # print_increment = 10
             # percent_done = print_increment
-            for i in tqdm(range(num_data_blocks)):
+            for i in tqdm(range(num_data_blocks), desc='file {}'.format(os.path.split(filename)[-1])):
                 read_one_data_block(data, header, indices, fid)
 
                 # Increment all indices indices in 128
@@ -188,11 +188,11 @@ def read_data(filename, scaled_output=False):
         # If the software notch filter was selected during the recording, apply the
         # same notch filter to amplifier data here.
         if header['notch_filter_frequency'] > 0:
-            logger.warning('Will disregard notch filter')
+            #logger.warning('Will disregard notch filter')
             # print_increment = 10
             # percent_done = print_increment
-            # for i in tqdm(range(header['num_amplifier_channels'])):
-            #     data['amplifier_data'][i,:] = notch_filter(data['amplifier_data'][i,:], header['sample_rate'], header['notch_filter_frequency'], 10)
+            for i in tqdm(range(header['num_amplifier_channels']), desc='notch filter'):
+                data['amplifier_data'][i,:] = notch_filter(data['amplifier_data'][i,:], header['sample_rate'], header['notch_filter_frequency'], 10)
     else:
         data = [];
 

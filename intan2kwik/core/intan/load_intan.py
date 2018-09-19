@@ -22,7 +22,7 @@ def read_data(filename):
 
     Data are returned in a dictionary, for future extensibility.
     """
-    logger.info('Reading rhd intan file {}'.format(filename))
+    logger.debug('Reading rhd intan file {}'.format(filename))
     tic = time.time()
     fid = open(filename, 'rb')
     filesize = os.path.getsize(filename)
@@ -101,9 +101,10 @@ def read_data(filename):
 
         # print_increment = 10
         # percent_done = print_increment
-        for i in tqdm(range(num_data_blocks)):
+        for i in tqdm(range(num_data_blocks), 
+                      desc='file {}'.format(os.path.split(filename)[-1])):
+            
             read_one_data_block(data, header, indices, fid)
-
             # Increment indices
             indices['amplifier'] += 60
             indices['aux_input'] += 15
@@ -111,11 +112,6 @@ def read_data(filename):
             indices['board_adc'] += 60
             indices['board_dig_in'] += 60
             indices['board_dig_out'] += 60
-
-            # fraction_done = 100 * (1.0 * i / num_data_blocks)
-            # if fraction_done >= percent_done:
-            #     print('{}% done...'.format(percent_done))
-            #     percent_done = percent_done + print_increment
 
         # Make sure we have read exactly the right amount of data.
         bytes_remaining = filesize - fid.tell()

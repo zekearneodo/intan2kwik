@@ -103,4 +103,6 @@ ENV/
 # pycharm
 .idea/
 
+# vscode
+.vscode
 *.pyc

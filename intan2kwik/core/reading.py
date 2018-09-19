@@ -141,11 +141,11 @@ def read_aux(native_name, intan_data, volt=True, intan_header=None):
 
 
 def read_intan_rec(rec_folder):
-    logger.info('reading intan rec {}'.format(rec_folder))
+    logger.debug('reading intan rec {}'.format(rec_folder))
     # list all the chunk files:
     all_rhx_files = glob.glob(os.path.join(rec_folder, rh_search_string))
     all_rhx_files.sort()
-    logger.info('Found {} chunks'.format(len(all_rhx_files)))
+    logger.debug('Found {} chunks'.format(len(all_rhx_files)))
 
     all_intan_rec = []
 
@@ -161,7 +161,7 @@ def read_aux_all_rec(native_name_list, rec_folder, volt=True):
     logger.info('reading intan chans {0} across all of rec {1}'.format(native_name_list, rec_folder))
     all_rhd_files = glob.glob(os.path.join(rec_folder, rh_search_string))
     all_rhd_files.sort()
-    logger.info(all_rhd_files)
+    logger.debug(all_rhd_files)
     # list all the chunk files:
     first_header = read_intan_header(all_rhd_files[0])
     all_intan_rec = []
@@ -169,7 +169,7 @@ def read_aux_all_rec(native_name_list, rec_folder, volt=True):
     chan_dictionaries = [{'name': n, 'x': np.array([]), 't': np.array([])} for n in native_name_list]
 
     for i_file, rhd_file in (enumerate(all_rhd_files)):
-        logger.info('Getting aux chans from file file {}/{}'.format(i_file, len(all_rhd_files)))
+        logger.debug('Getting aux chans from file file {}/{}'.format(i_file, len(all_rhd_files)))
         block_read = read_data(rhd_file)
         logger.debug('File read')
 
