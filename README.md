@@ -6,7 +6,7 @@ It creates one dataset (data) with all of the neural ports (in order) and subseq
 For the digital channels, it just creates another table (in the same group), named dig_in.
 
 For both, it keeps track of the time in the tables t_data and t_dig.
-The extraction of stimulation data is in progress.
+The extraction of other data/metadata is in progress.
 
 Examples:
 - Read, sort and append all .rhd files in a folder into a .kwd file, stripping all the amplifier and the board_adc channels into the rec 0 group:
