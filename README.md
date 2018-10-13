@@ -1,5 +1,5 @@
 # intan2kwik
-Convert files recorded with intan RHD2000/RHS2000 eval software (.rhd/.rhs) to the Kwik format (.kwd, .kwe, etc)
+Convert files recorded with intan RHD2000/RHS2000 eval software (.rhd/.rhs) to the Klusta-team's Kwik format (.kwd, .kwe, etc) (https://github.com/klusta-team/kwiklib/wiki/Kwik-format)
 
 For now, it just makes one .kwd file with all the .rhd files in a folder.
 It creates one dataset (data) with all of the neural ports (in order) and subsequently the adc channels.
