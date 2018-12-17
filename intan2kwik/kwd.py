@@ -5,6 +5,7 @@ import os
 import h5py
 import warnings
 import pandas as pd
+from tqdm import tqdm_notebook as tqdm
 
 from intan2kwik.core.h5 import tables
 from intan2kwik.core import reading
@@ -75,8 +76,8 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
     # make the table
     # read the blocks and append them to the table
     # set the attributes of the table
-    logger.info('Appending {} files to data table in {}'.format(len(rhd_list),
-                                                                parent_group))
+    logger.debug('Appending {} files to data table in {}'.format(len(rhd_list),
+                                                                 parent_group))
 
     total_samples_in = 0
     total_samples_in_dig = 0
@@ -87,8 +88,14 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
     s_f = parent_group.attrs.get('sample_rate')
 
-    for i, rhd_file in enumerate(rhd_list):
-        logger.info('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
+    rec_id = parent_group.name.split('/')[-1]
+
+    pbar = tqdm(enumerate(rhd_list), total=len(rhd_list),
+                            desc='rec {}'.format(rec_id), leave=False)
+    for i, rhd_file in pbar:
+        logger.debug('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
+        
+        pbar.set_postfix(file=' {}'.format(os.path.split(rhd_file)[-1]))
         read_block = reading.read_data(rhd_file)
         if i == 0:
             # filter include groups, warn if a group wasn't in the data and remove it from the list
@@ -121,13 +128,13 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
         # data comes in as uint16
         if i == 0:
-            logger.info('Creating tables of neural/adc data')
+            logger.debug('Creating tables of neural/adc data')
             dset = tables.unlimited_rows_data(parent_group, 'data',
                                               save_block.astype(np.int16))
             tset = tables.unlimited_rows_data(parent_group, name_t, save_t)
 
             if has_digital_in:
-                logger.info('Creating tables of digital data')
+                logger.debug('Creating tables of digital data')
                 dset_dig = tables.unlimited_rows_data(parent_group, 'dig_in',
                                                       dig_in_data.astype(np.short))
                 tset_dig = tables.unlimited_rows_data(
@@ -143,7 +150,7 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
             # assert time continuity
             more_control_d_samples = (save_t[0] * s_f - total_samples_in)
-            logger.info(
+            logger.debug(
                 'Delta cum_samples/cum_t is {}'.format(more_control_d_samples))
 
             control_dt = save_t[0] - last_t
@@ -232,16 +239,16 @@ def intan_to_kwd_multirec(sess_pd: pd.DataFrame, dest_file_path, include_channel
     folder = os.path.split(sess_pd.loc[0, 'path'])[0]
     if include_channels is None:
         include_channels = ['amplifier', 'board_adc']
-    logger.info(
+    logger.debug(
         'reading intan chans data across all of sess {0}'.format(folder))
 
     # list all the chunk files:
-    logger.debug('dest file: {}'.format(dest_file_path))
+    logger.info('dest file: {}'.format(dest_file_path))
     with h5py.File(dest_file_path, 'a') as kwd_file:
         rec_grp = kwd_file.require_group('recordings')
         all_recs = np.unique(sess_pd['rec'])
         logger.debug('File should have {} recs'.format(all_recs.shape[0]))
-        for rec in all_recs:
+        for rec in tqdm(all_recs, total=len(all_recs), desc='Sess'):
             rec_rhx_files = list(sess_pd[sess_pd['rec'] == rec]['path'])
             # attributes from the header
             first_header = reading.read_intan_header(rec_rhx_files[0])

@@ -102,7 +102,8 @@ def read_data(filename):
         # print_increment = 10
         # percent_done = print_increment
         for i in tqdm(range(num_data_blocks), 
-                      desc='file {}'.format(os.path.split(filename)[-1])):
+                      desc='{}'.format(os.path.split(filename)[-1]),
+                      leave=False):
             
             read_one_data_block(data, header, indices, fid)
             # Increment indices
@@ -175,7 +176,7 @@ def read_data(filename):
             logger.debug('Will apply notch filter')
             # print_increment = 10
             # percent_done = print_increment
-            for i in tqdm(range(header['num_amplifier_channels']), desc='notch filter'):
+            for i in tqdm(range(header['num_amplifier_channels']), desc='notch filter', leave=False):
                 data['amplifier_data'][i,:] = notch_filter(data['amplifier_data'][i,:], header['sample_rate'], header['notch_filter_frequency'], 10)
     else:
         data = [];
