@@ -7,7 +7,7 @@ import sys, struct, math, os, time
 import numpy as np
 import logging
 
-from tqdm import tqdm
+from tqdm import tqdm_notebook as tqdm
 
 from intan2kwik.core.intan.util.read_header import read_header
 from intan2kwik.core.intan.util.get_bytes_per_data_block import get_bytes_per_data_block
