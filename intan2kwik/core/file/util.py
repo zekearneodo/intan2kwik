@@ -4,8 +4,8 @@ import numpy as np
 import glob
 import os
 
-def datetime_from_filename(filename: str, base_name='raw_intan') -> datetime.datetime:
-    datetime_str = ''.join(filename.split('.')[0].split(base_name + '_')[-2:])
+def datetime_from_filename(filename: str) -> datetime.datetime:
+    datetime_str = ''.join(filename.split('.')[0].split('_')[-2:])
     datetime_tuple = tuple([int(datetime_str[i:i+2]) for i in range(0,12,2)])
     t_stamp = datetime.datetime(*datetime_tuple)
     
