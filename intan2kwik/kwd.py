@@ -4,8 +4,11 @@ import glob
 import os
 import h5py
 import warnings
+import tempfile
+import shutil
 import pandas as pd
 from tqdm import tqdm_notebook as tqdm
+import contextlib
 
 from intan2kwik.core.h5 import tables
 from intan2kwik.core import reading
@@ -94,7 +97,6 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
                             desc='rec {}'.format(rec_id), leave=False)
     for i, rhd_file in pbar:
         logger.debug('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
-        
         pbar.set_postfix(file=' {}'.format(os.path.split(rhd_file)[-1]))
         read_block = reading.read_data(rhd_file)
         if i == 0:
@@ -117,7 +119,6 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
         name_t = 't_{}'.format(include_chan_groups[0])
 
         # The digital channels
-
         try:
             dig_in_data = read_block['board_dig_in_data'].T.astype(np.short)
             dig_in_t = read_block['t_dig'].reshape([-1, 1])
@@ -230,7 +231,7 @@ def neural_ports_meta(folder):
     return chans, count
 
 
-def intan_to_kwd_multirec(sess_pd: pd.DataFrame, dest_file_path, include_channels=None):
+def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None):
     # make the .kwd file
     # make the /recording/{} i group
     # dump header to application data
@@ -243,37 +244,35 @@ def intan_to_kwd_multirec(sess_pd: pd.DataFrame, dest_file_path, include_channel
         'reading intan chans data across all of sess {0}'.format(folder))
 
     # list all the chunk files:
-    logger.info('dest file: {}'.format(dest_file_path))
-    with h5py.File(dest_file_path, 'a') as kwd_file:
-        rec_grp = kwd_file.require_group('recordings')
-        all_recs = np.unique(sess_pd['rec'])
-        logger.debug('File should have {} recs'.format(all_recs.shape[0]))
-        for rec in tqdm(all_recs, total=len(all_recs), desc='Sess'):
-            rec_rhx_files = list(sess_pd[sess_pd['rec'] == rec]['path'])
-            # attributes from the header
-            first_header = reading.read_intan_header(rec_rhx_files[0])
-            # logger.info('First header {}'.format(first_header))
+    rec_grp = kwd_file.require_group('recordings')
+    all_recs = np.unique(sess_pd['rec'])
+    logger.debug('File should have {} recs'.format(all_recs.shape[0]))
+    for rec in tqdm(all_recs, total=len(all_recs), desc='Sess'):
+        rec_rhx_files = list(sess_pd[sess_pd['rec'] == rec]['path'])
+        # attributes from the header
+        first_header = reading.read_intan_header(rec_rhx_files[0])
+        # logger.info('First header {}'.format(first_header))
 
-            v_multipliers = [0.195, 50.354e-6]
-            if first_header['eval_board_mode'] == 1:
-                v_multipliers[1] = 152.59e-6
+        v_multipliers = [0.195, 50.354e-6]
+        if first_header['eval_board_mode'] == 1:
+            v_multipliers[1] = 152.59e-6
 
-            logger.debug(
-                'Creating the /recordings/{} with {} files'.format(rec, len(rec_rhx_files)))
-            data_grp = create_data_grp(
-                rec_grp, first_header, include_channels, rec)
-            # create application data with all metadata
-            logger.debug('Creating data table and going throug the recs')
+        logger.debug(
+            'Creating the /recordings/{} with {} files'.format(rec, len(rec_rhx_files)))
+        data_grp = create_data_grp(
+            rec_grp, first_header, include_channels, rec)
+        # create application data with all metadata
+        logger.debug('Creating data table and going throug the recs')
 
-            timestamp_recs = rhd_rec_to_table(
-                rec_rhx_files, data_grp, include_channels)
-            # create the table of files, and the tabe with rec end timestamps
-            table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
-            table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
-                             timestamp_recs[0],
-                             timestamp_recs[1]]
-            for name, vec in zip(table_names, table_vectors):
-                tables.insert_table(data_grp['application_data'], vec, name)
+        timestamp_recs = rhd_rec_to_table(
+            rec_rhx_files, data_grp, include_channels)
+        # create the table of files, and the tabe with rec end timestamps
+        table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
+        table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
+                            timestamp_recs[0],
+                            timestamp_recs[1]]
+        for name, vec in zip(table_names, table_vectors):
+            tables.insert_table(data_grp['application_data'], vec, name)
 
     return first_header
 
@@ -310,6 +309,22 @@ def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='au
         logger.info('Will lump all files into single rec {}'.format(rec))
         all_rhx_pd.loc[:, 'rec'] = rec
 
-    first_header = intan_to_kwd_multirec(all_rhx_pd, dest_file_path,
-                                         include_channels=include_channels)
+    logger.info('dest file: {}'.format(dest_file_path))
+    
+    # go through a temporary file
+    tmp_sess_dir = tempfile.mkdtemp()
+    kwd_temp_path = os.path.join(tmp_sess_dir, os.path.split(dest_file_path)[-1])
+    logger.info('tmp path {}'.format(kwd_temp_path))
+    try:
+        with h5py.File(kwd_temp_path, 'a') as kwd_temp_file: 
+            first_header = intan_to_kwd_multirec(kwd_temp_file, all_rhx_pd,
+                                                include_channels=include_channels)
+
+        logger.info('moving back to {}'.format(dest_file_path))
+        os.makedirs(os.path.split(dest_file_path)[0], exist_ok=True)
+        shutil.move(kwd_temp_path, dest_file_path)
+    finally:
+        logger.info('removing temp file')
+        with contextlib.suppress(FileNotFoundError):
+            shutil.rmtree(tmp_sess_dir)
     return first_header, all_rhx_pd
