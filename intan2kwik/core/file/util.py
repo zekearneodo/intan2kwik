@@ -11,7 +11,10 @@ def datetime_from_filename(filename: str) -> datetime.datetime:
     
     # now date is yymmdd, time is hhmmss
     # turn into datetime object
-    return t_stamp
+    #return t_stamp
+    # the date in the file comes with only two digits
+    return t_stamp.replace(year=t_stamp.year + 2000)
+    
 
 def get_rec_breaks(rhd_pd: pd.DataFrame) -> pd.DataFrame:
     rhd_pd['t_diff'] = rhd_pd['t_stamp'].diff()

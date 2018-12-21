@@ -182,8 +182,10 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
     return end_sample_vec
 
 
-def create_data_grp(rec_grp, intan_hdr, include_channels, rec):
+def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
+    rec = rec_rhx_pd['rec'].values[0]
     logger.debug('Creating data group for this rec {}'.format(rec))
+    rec_start = rec_rhx_pd.iloc[0, :]['t_stamp'].strftime("%Y-%m-%d %H:%M:%S").encode('utf-8')
 
     data_grp = rec_grp.create_group('{}'.format(rec))
     # append the metadata to this data group
@@ -191,7 +193,7 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec):
     data_grp.attrs.create('sample_rate', intan_hdr['sample_rate'])
     data_grp.attrs.create('name', rec)
     data_grp.attrs.create('start_sample', 0)
-    data_grp.attrs.create('start_time', 1)
+    data_grp.attrs.create('start_time', rec_start)
 
     all_chan_names = list_chan_names(intan_hdr, include_channels)
     all_chan_names_uni = [h5_unicode_hack(x) for x in all_chan_names]
@@ -248,6 +250,7 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
     all_recs = np.unique(sess_pd['rec'])
     logger.debug('File should have {} recs'.format(all_recs.shape[0]))
     for rec in tqdm(all_recs, total=len(all_recs), desc='Sess'):
+        rec_rhx_pd = sess_pd[sess_pd['rec'] == rec]
         rec_rhx_files = list(sess_pd[sess_pd['rec'] == rec]['path'])
         # attributes from the header
         first_header = reading.read_intan_header(rec_rhx_files[0])
@@ -260,7 +263,7 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
         logger.debug(
             'Creating the /recordings/{} with {} files'.format(rec, len(rec_rhx_files)))
         data_grp = create_data_grp(
-            rec_grp, first_header, include_channels, rec)
+            rec_grp, first_header, include_channels, rec_rhx_pd)
         # create application data with all metadata
         logger.debug('Creating data table and going throug the recs')
 
