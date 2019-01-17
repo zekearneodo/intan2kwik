@@ -93,6 +93,7 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
     rec_id = parent_group.name.split('/')[-1]
 
+    # make a cute progress bar
     pbar = tqdm(enumerate(rhd_list), total=len(rhd_list),
                             desc='rec {}'.format(rec_id), leave=False)
     for i, rhd_file in pbar:
@@ -189,10 +190,10 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
 
     data_grp = rec_grp.create_group('{}'.format(rec))
     # append the metadata to this data group
-    data_grp.attrs.create('bit_depth', 16)
-    data_grp.attrs.create('sample_rate', intan_hdr['sample_rate'])
+    data_grp.attrs.create('bit_depth', 16, dtype=np.uint32)
+    data_grp.attrs.create('sample_rate', intan_hdr['sample_rate'], dtype=np.float32)
     data_grp.attrs.create('name', rec)
-    data_grp.attrs.create('start_sample', 0)
+    data_grp.attrs.create('start_sample', 0, dtype=np.uint32)
     data_grp.attrs.create('start_time', rec_start)
 
     all_chan_names = list_chan_names(intan_hdr, include_channels)
@@ -203,7 +204,7 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
 
     # create application data
     app_data_grp = data_grp.create_group('application_data')
-    app_data_grp.attrs.create('is_multiSampleRate_data', 0)
+    app_data_grp.attrs.create('is_multiSampleRate_data', 0, dtype=np.uint8)
     app_data_grp.attrs.create('channels_sample_rate', all_rates)
     app_data_grp.attrs.create('channel_bit_volts', all_bit_volts)
     app_data_grp.attrs.create('channel_names', all_chan_names_uni)
