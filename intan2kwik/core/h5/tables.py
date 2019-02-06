@@ -30,6 +30,7 @@ def unlimited_rows_data(group, table_name, data):
     logger.debug('Creating unbounded table {0} in group {1}'.format(
         group.name, table_name))
     try:
+        logger.debug('target table name: {}'.format(table_name))
         table = group.create_dataset(table_name,
                                      shape=data.shape,
                                      dtype=data.dtype,
@@ -37,9 +38,10 @@ def unlimited_rows_data(group, table_name, data):
         table[:] = data
 
     except RuntimeError as e:
-        if 'Name already exists' in str(e):
-            logger.debug(
-                'Table {} already exists, appending the data'.format(table_name))
+        err_msg = str(e).lower()
+        logger.warning('error in unlimited_rows_data {}'.format(err_msg))
+        if 'name already exists' in err_msg:
+            'Table {} already exists, appending the data'.format(table_name)
             table = group[table_name]
             append_rows(table, data)
         else:

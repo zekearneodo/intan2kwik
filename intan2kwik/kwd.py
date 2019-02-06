@@ -29,9 +29,31 @@ def list_chan_names(header, include_channels):
 
     c_names = []
     for chgrp in ch_groups:
-        ch_list = header[chgrp]
-        c_names += [ch['custom_channel_name'] for ch in ch_list]
+        try:
+            ch_list = header[chgrp]
+            c_names += [ch['custom_channel_name'] for ch in ch_list]
+        except KeyError as k:
+            logger.debug('No {} channels'.format(chgrp))
     return c_names
+
+
+def get_edges(data_chunk: np.ndarray) -> np.ndarray:
+    """get the edges in an array of digital streams (rising/falling)
+    Arguments:
+        data_chunk {np.ndarray} -- (n_ch, n_sample )array of streams of digital channels
+    
+    Returns:
+        np.ndarray -- 3 column array with timestamp, channel, and set value (0/1 for falling/rising)
+    """
+    hi = np.argwhere(np.diff(data_chunk, axis=0) == 1)
+    lo = np.argwhere(np.diff(data_chunk, axis=0) == -1)
+
+    [hi, lo] = [np.hstack([x, np.reshape(np.ones(x.shape[0])*edge, [-1, 1])])
+                for x, edge in zip([hi, lo], [1, 0])]
+
+    hi_lo = np.vstack([hi, lo]).astype(np.int)
+    # return sorted by timestamp
+    return hi_lo[np.argsort(hi_lo[:, 0])]
 
 
 def list_chan_bit_volts(header, include_channels):
@@ -95,7 +117,7 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
     # make a cute progress bar
     pbar = tqdm(enumerate(rhd_list), total=len(rhd_list),
-                            desc='rec {}'.format(rec_id), leave=False)
+                desc='rec {}'.format(rec_id), leave=False)
     for i, rhd_file in pbar:
         logger.debug('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
         pbar.set_postfix(file=' {}'.format(os.path.split(rhd_file)[-1]))
@@ -123,6 +145,7 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
         try:
             dig_in_data = read_block['board_dig_in_data'].T.astype(np.short)
             dig_in_t = read_block['t_dig'].reshape([-1, 1])
+            dig_edge_arr = get_edges(dig_in_data)
             has_digital_in = True
         except KeyError as k:
             logger.warn('No digital channels')
@@ -142,6 +165,17 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
                 tset_dig = tables.unlimited_rows_data(
                     parent_group, 't_dig', dig_in_t)
 
+                # gets array t, chan_idx, edge
+
+                edge_tables_dict = {}
+                edge_tables_names = ['dig_edge_t', 'dig_edge_ch', 'dig_edge']
+                for col, table in enumerate(edge_tables_names):
+                    col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
+                    if col == 0:
+                        col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
+                    edge_tables_dict[table] = tables.unlimited_rows_data(parent_group, table,
+                                                                         col_array)
+
         else:
             tables.append_rows(dset, save_block.astype(np.int16))
             tables.append_rows(tset, save_t)
@@ -149,6 +183,15 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
             if has_digital_in:
                 tables.append_rows(dset_dig, dig_in_data.astype(np.short))
                 tables.append_rows(tset_dig, dig_in_t)
+                logger.debug('edges shape {}'.format(dig_edge_arr.shape))
+                if 1 > -1:
+                    for col, table_name in enumerate(edge_tables_names):
+                        #put in the col of the array a 'column' format for appending rows to a table
+                        col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
+                        if col==0:
+                            col_array += total_samples_in_dig
+                        tables.append_rows(edge_tables_dict[table_name] ,
+                                                                    col_array)
 
             # assert time continuity
             more_control_d_samples = (save_t[0] * s_f - total_samples_in)
@@ -169,7 +212,7 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
 
         if has_digital_in:
             last_t_dig = dig_in_t[-1]
-            total_samples_in_dig += last_t_dig.shape[0]
+            total_samples_in_dig += dig_in_data.shape[0]
             end_sample_vec[1, i] = total_samples_in_dig
 
     # only atrribute for table is valid_samples
@@ -183,15 +226,18 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
     return end_sample_vec
 
 
-def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
+def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd,
+                    include_dig_channels=['board_dig_in']):
     rec = rec_rhx_pd['rec'].values[0]
     logger.debug('Creating data group for this rec {}'.format(rec))
-    rec_start = rec_rhx_pd.iloc[0, :]['t_stamp'].strftime("%Y-%m-%d %H:%M:%S").encode('utf-8')
+    rec_start = rec_rhx_pd.iloc[0, :]['t_stamp'].strftime(
+        "%Y-%m-%d %H:%M:%S").encode('utf-8')
 
     data_grp = rec_grp.create_group('{}'.format(rec))
     # append the metadata to this data group
     data_grp.attrs.create('bit_depth', 16, dtype=np.uint32)
-    data_grp.attrs.create('sample_rate', intan_hdr['sample_rate'], dtype=np.float32)
+    data_grp.attrs.create(
+        'sample_rate', intan_hdr['sample_rate'], dtype=np.float32)
     data_grp.attrs.create('name', rec)
     data_grp.attrs.create('start_sample', 0, dtype=np.uint32)
     data_grp.attrs.create('start_time', rec_start)
@@ -201,6 +247,7 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
     all_bit_volts = list_chan_bit_volts(intan_hdr, include_channels)
     n_chan = len(all_chan_names)
     all_rates = np.ones(n_chan) * intan_hdr['sample_rate']
+    dig_chan_names = list_chan_names(intan_hdr, include_dig_channels)
 
     # create application data
     app_data_grp = data_grp.create_group('application_data')
@@ -208,6 +255,13 @@ def create_data_grp(rec_grp, intan_hdr, include_channels, rec_rhx_pd):
     app_data_grp.attrs.create('channels_sample_rate', all_rates)
     app_data_grp.attrs.create('channel_bit_volts', all_bit_volts)
     app_data_grp.attrs.create('channel_names', all_chan_names_uni)
+
+    # apend digital channels if present
+
+    if len(dig_chan_names) > 0:
+        logger.debug('appending meta of dig channels')
+        app_data_grp.attrs.create('dig_channel_names',
+                                  [h5_unicode_hack(x) for x in dig_chan_names])
 
     return data_grp
 
@@ -240,7 +294,7 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
     # dump header to application data
     # run rhd_rec_to table to create the table in the group
 
-    folder = os.path.split(sess_pd.loc[0, 'path'])[0]
+    folder = os.path.split(sess_pd.iloc[0]['path'])[0]
     if include_channels is None:
         include_channels = ['amplifier', 'board_adc']
     logger.debug(
@@ -273,8 +327,8 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
         # create the table of files, and the tabe with rec end timestamps
         table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
         table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
-                            timestamp_recs[0],
-                            timestamp_recs[1]]
+                         timestamp_recs[0],
+                         timestamp_recs[1]]
         for name, vec in zip(table_names, table_vectors):
             tables.insert_table(data_grp['application_data'], vec, name)
 
@@ -314,15 +368,16 @@ def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='au
         all_rhx_pd.loc[:, 'rec'] = rec
 
     logger.info('dest file: {}'.format(dest_file_path))
-    
+
     # go through a temporary file
     tmp_sess_dir = tempfile.mkdtemp()
-    kwd_temp_path = os.path.join(tmp_sess_dir, os.path.split(dest_file_path)[-1])
-    logger.info('tmp path {}'.format(kwd_temp_path))
+    kwd_temp_path = os.path.join(
+        tmp_sess_dir, os.path.split(dest_file_path)[-1])
+    logger.debug('tmp path {}'.format(kwd_temp_path))
     try:
-        with h5py.File(kwd_temp_path, 'a') as kwd_temp_file: 
+        with h5py.File(kwd_temp_path, 'a') as kwd_temp_file:
             first_header = intan_to_kwd_multirec(kwd_temp_file, all_rhx_pd,
-                                                include_channels=include_channels)
+                                                 include_channels=include_channels)
 
         logger.info('moving back to {}'.format(dest_file_path))
         os.makedirs(os.path.split(dest_file_path)[0], exist_ok=True)
