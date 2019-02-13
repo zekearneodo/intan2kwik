@@ -121,7 +121,11 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
     for i, rhd_file in pbar:
         logger.debug('Reading file {0}/{1}'.format(i+1, len(rhd_list)))
         pbar.set_postfix(file=' {}'.format(os.path.split(rhd_file)[-1]))
-        read_block = reading.read_data(rhd_file)
+        try:
+            read_block = reading.read_data(rhd_file)
+        except:
+            logger.warn('Failed to read file {}, maybe it is corrupted'.format(rhd_file))
+            raise
         if i == 0:
             # filter include groups, warn if a group wasn't in the data and remove it from the list
             include_chan_groups = []
