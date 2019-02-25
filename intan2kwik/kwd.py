@@ -311,30 +311,35 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
     for rec in tqdm(all_recs, total=len(all_recs), desc='Sess'):
         rec_rhx_pd = sess_pd[sess_pd['rec'] == rec]
         rec_rhx_files = list(sess_pd[sess_pd['rec'] == rec]['path'])
-        # attributes from the header
-        first_header = reading.read_intan_header(rec_rhx_files[0])
-        # logger.info('First header {}'.format(first_header))
+        try:
+            # attributes from the header
+            first_header = reading.read_intan_header(rec_rhx_files[0])
+            # logger.info('First header {}'.format(first_header))
 
-        v_multipliers = [0.195, 50.354e-6]
-        if first_header['eval_board_mode'] == 1:
-            v_multipliers[1] = 152.59e-6
+            v_multipliers = [0.195, 50.354e-6]
+            if first_header['eval_board_mode'] == 1:
+                v_multipliers[1] = 152.59e-6
 
-        logger.debug(
-            'Creating the /recordings/{} with {} files'.format(rec, len(rec_rhx_files)))
-        data_grp = create_data_grp(
-            rec_grp, first_header, include_channels, rec_rhx_pd)
-        # create application data with all metadata
-        logger.debug('Creating data table and going throug the recs')
+            logger.debug(
+                'Creating the /recordings/{} with {} files'.format(rec, len(rec_rhx_files)))
+            data_grp = create_data_grp(
+                rec_grp, first_header, include_channels, rec_rhx_pd)
+            # create application data with all metadata
+            logger.debug('Creating data table and going throug the recs')
 
-        timestamp_recs = rhd_rec_to_table(
-            rec_rhx_files, data_grp, include_channels)
-        # create the table of files, and the tabe with rec end timestamps
-        table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
-        table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
-                         timestamp_recs[0],
-                         timestamp_recs[1]]
-        for name, vec in zip(table_names, table_vectors):
-            tables.insert_table(data_grp['application_data'], vec, name)
+            timestamp_recs = rhd_rec_to_table(
+                rec_rhx_files, data_grp, include_channels)
+            # create the table of files, and the tabe with rec end timestamps
+            table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
+            table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
+                            timestamp_recs[0],
+                            timestamp_recs[1]]
+            for name, vec in zip(table_names, table_vectors):
+                tables.insert_table(data_grp['application_data'], vec, name)
+        except:
+            logger.warn('Could not read a file in rec {}, skipping the file group')
+            del data_grp
+            
 
     return first_header
 
