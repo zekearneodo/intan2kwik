@@ -41,7 +41,7 @@ def get_edges(data_chunk: np.ndarray) -> np.ndarray:
     """get the edges in an array of digital streams (rising/falling)
     Arguments:
         data_chunk {np.ndarray} -- (n_ch, n_sample )array of streams of digital channels
-    
+
     Returns:
         np.ndarray -- 3 column array with timestamp, channel, and set value (0/1 for falling/rising)
     """
@@ -124,7 +124,8 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
         try:
             read_block = reading.read_data(rhd_file)
         except:
-            logger.warn('Failed to read file {}, maybe it is corrupted'.format(rhd_file))
+            logger.warn(
+                'Failed to read file {}, maybe it is corrupted'.format(rhd_file))
             raise
         if i == 0:
             # filter include groups, warn if a group wasn't in the data and remove it from the list
@@ -174,9 +175,9 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
                 edge_tables_dict = {}
                 edge_tables_names = ['dig_edge_t', 'dig_edge_ch', 'dig_edge']
                 for col, table in enumerate(edge_tables_names):
-                    col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
+                    col_array = dig_edge_arr[:, col].reshape([-1, 1])
                     if col == 0:
-                        col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
+                        col_array = dig_edge_arr[:, col].reshape([-1, 1])
                     edge_tables_dict[table] = tables.unlimited_rows_data(parent_group, table,
                                                                          col_array)
 
@@ -190,12 +191,12 @@ def rhd_rec_to_table(rhd_list: list, parent_group: h5py.Group, chan_groups_wishl
                 logger.debug('edges shape {}'.format(dig_edge_arr.shape))
                 if 1 > -1:
                     for col, table_name in enumerate(edge_tables_names):
-                        #put in the col of the array a 'column' format for appending rows to a table
-                        col_array = dig_edge_arr[:, col].reshape([-1, 1]) 
-                        if col==0:
+                        # put in the col of the array a 'column' format for appending rows to a table
+                        col_array = dig_edge_arr[:, col].reshape([-1, 1])
+                        if col == 0:
                             col_array += total_samples_in_dig
-                        tables.append_rows(edge_tables_dict[table_name] ,
-                                                                    col_array)
+                        tables.append_rows(edge_tables_dict[table_name],
+                                           col_array)
 
             # assert time continuity
             more_control_d_samples = (save_t[0] * s_f - total_samples_in)
@@ -332,19 +333,21 @@ def intan_to_kwd_multirec(kwd_file, sess_pd: pd.DataFrame, include_channels=None
             # create the table of files, and the tabe with rec end timestamps
             table_names = ['rhx_files', 't_stamp_end', 't_stamp_dig_end']
             table_vectors = [np.array(rec_rhx_files, dtype=h5py.special_dtype(vlen=str)),
-                            timestamp_recs[0],
-                            timestamp_recs[1]]
+                             timestamp_recs[0],
+                             timestamp_recs[1]]
             for name, vec in zip(table_names, table_vectors):
                 tables.insert_table(data_grp['application_data'], vec, name)
         except:
-            logger.warn('Could not read a file in rec {}, skipping the file group')
+            logger.warn(
+                'Could not read a file in rec {}, skipping the file group')
             del data_grp
-            
 
     return first_header
 
 
-def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='auto', single_rec=False):
+def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='auto',
+                 single_rec=False,
+                 overwrite=False):
     """
     :param folder: (string) folder where the .rh? files are
     :param dest_file_path: (string) dest of the kw? files
@@ -352,12 +355,22 @@ def intan_to_kwd(folder, dest_file_path, rec=0, include_channels=None, board='au
     :param include_channels: (flat ndarray/list)
     :param board: (str) 'rhd' or 'rhs' for rhd2000 or rhs2000, 'auto' for detecting from extension
     :param sigle_rec: bool, whether to lump everything into one recording, or try to split each continuous segment
+    :param overwrite: bool, whether to overwrite any pre-existing kwd file
     :return:
     """
     # make the .kwd file
     # make the /recording/0 group
     # dump header to application data
     # run rhd_rec_to table to create the table in the group
+
+    if os.path.isfile(dest_file_path):
+        logger.warn('File {} already exists'.format(dest_file_path))
+        if overwrite:
+            logger.info('Will create a new kwd file and overwrite the old one')
+        else:
+            logger.warn('Will abort. To overwrite the existing file, use overwrite=True option')
+            raise RuntimeError('Kwd file already exists')
+
     if include_channels is None:
         include_channels = ['amplifier', 'board_adc']
     logger.info(
